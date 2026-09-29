@@ -1,0 +1,1255 @@
+```html
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RemontCalc V5</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#f4f6f8;
+    color:#222;
+}
+.container{
+    max-width:1250px;
+    margin:auto;
+    padding:20px;
+}
+header{
+    background:#17202a;
+    color:white;
+    padding:22px;
+    border-radius:16px;
+    margin-bottom:20px;
+}
+header h1{margin:0 0 6px}
+.card{
+    background:white;
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 3px 12px rgba(0,0,0,.06);
+}
+h2,h3{margin-top:0}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:12px;
+}
+label{
+    display:block;
+    font-weight:bold;
+    font-size:14px;
+    margin-bottom:5px;
+}
+input,select,textarea{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccd2d8;
+    border-radius:8px;
+    font-size:15px;
+}
+textarea{min-height:70px}
+button{
+    border:0;
+    border-radius:9px;
+    padding:11px 15px;
+    cursor:pointer;
+    font-weight:bold;
+    margin:4px;
+}
+.btn{background:#e9ecef}
+.primary{background:#1976d2;color:white}
+.success{background:#198754;color:white}
+.danger{background:#dc3545;color:white}
+.dark{background:#343a40;color:white}
+.actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+}
+.room{
+    border:2px solid #e1e5e9;
+    border-radius:14px;
+    padding:18px;
+    margin-top:15px;
+}
+.room-title{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-bottom:15px;
+}
+.room-title input{
+    font-size:18px;
+    font-weight:bold;
+}
+.summary{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;
+}
+.stat{
+    background:#f7f9fb;
+    padding:18px;
+    border-radius:12px;
+}
+.stat small{color:#666}
+.stat strong{
+    display:block;
+    font-size:23px;
+    margin-top:6px;
+}
+.total{
+    background:#17202a;
+    color:white;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:12px;
+}
+th,td{
+    border-bottom:1px solid #ddd;
+    padding:9px;
+    text-align:left;
+}
+th{background:#f1f3f5}
+.price-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:10px;
+}
+.material-box{
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:12px;
+    margin-bottom:8px;
+}
+.material-box strong{font-size:16px}
+.note{
+    color:#666;
+    font-size:13px;
+}
+@media(max-width:600px){
+    .container{padding:10px}
+    .card{padding:14px}
+    table{font-size:13px}
+    th,td{padding:6px}
+}
+@media print{
+    body{background:white}
+    .no-print,.actions,.price-editor{display:none!important}
+    .card{box-shadow:none;border:1px solid #ddd}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <h1>🏠 RemontCalc V5</h1>
+    <div>სარემონტო ხარჯთაღრიცხვის კალკულატორი</div>
+</header>
+
+<div class="card no-print">
+    <h2>📋 პროექტის ინფორმაცია</h2>
+
+    <div class="grid">
+        <div>
+            <label>პროექტის სახელი</label>
+            <input id="projectName" placeholder="მაგ. ბინის რემონტი">
+        </div>
+
+        <div>
+            <label>კლიენტი</label>
+            <input id="clientName" placeholder="კლიენტის სახელი">
+        </div>
+
+        <div>
+            <label>მისამართი</label>
+            <input id="address" placeholder="მისამართი">
+        </div>
+
+        <div>
+            <label>დონის არჩევა</label>
+            <select id="level" onchange="setLevel(this.value)">
+                <option value="economy">Economy</option>
+                <option value="standard" selected>Standard</option>
+                <option value="premium">Premium</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="primary" onclick="addRoom()">➕ ოთახის დამატება</button>
+        <button class="success" onclick="saveProject()">💾 შენახვა</button>
+        <button class="btn" onclick="loadProject()">📂 ჩატვირთვა</button>
+        <button class="btn" onclick="exportJSON()">⬇️ JSON Export</button>
+        <button class="btn" onclick="document.getElementById('jsonFile').click()">⬆️ JSON Import</button>
+        <button class="dark" onclick="window.print()">🖨️ ბეჭდვა / PDF</button>
+        <input id="jsonFile" type="file" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+</div>
+
+<div id="rooms"></div>
+
+<div class="card">
+    <h2>📊 პროექტის შეჯამება</h2>
+
+    <div class="summary">
+
+        <div class="stat">
+            <small>მასალები</small>
+            <strong id="materialTotal">0 ₾</strong>
+        </div>
+
+        <div class="stat">
+            <small>ხელობა</small>
+            <strong id="laborTotal">0 ₾</strong>
+        </div>
+
+        <div class="stat">
+            <small>დამატებითი</small>
+            <strong id="extraTotal">0 ₾</strong>
+        </div>
+
+        <div class="stat total">
+            <small>სრული ღირებულება</small>
+            <strong id="grandTotal">0 ₾</strong>
+        </div>
+
+    </div>
+</div>
+
+<div class="card">
+    <h2>📦 პროექტის საერთო მასალები</h2>
+    <div id="materialsList"></div>
+</div>
+
+<div class="card">
+    <h2>📑 დეტალური ხარჯთაღრიცხვა</h2>
+    <div style="overflow-x:auto">
+        <table>
+            <thead>
+                <tr>
+                    <th>ოთახი</th>
+                    <th>სამუშაო</th>
+                    <th>რაოდენობა</th>
+                    <th>ერთეული</th>
+                    <th>მასალა</th>
+                    <th>ხელობა</th>
+                    <th>სულ</th>
+                </tr>
+            </thead>
+            <tbody id="estimateTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card price-editor no-print">
+    <h2>💰 ფასების რედაქტორი</h2>
+    <div class="note">
+        აქ შეცვლილი ფასები ავტომატურად გამოიყენება კალკულაციაში.
+    </div>
+    <div id="priceEditor" class="price-grid"></div>
+</div>
+
+</div>
+
+<script>
+
+const defaultPrices = {
+
+economy:{
+    laminate:[20,8],
+    parquet:[45,20],
+    tile:[15,25],
+    granite:[35,30],
+    vinyl:[25,18],
+
+    paint:[5,15],
+    wallpaper:[8,10],
+    plaster:[15,20],
+    walltile:[15,25],
+
+    ceilingPaint:[5,15],
+    drywall:[25,20],
+    decorativeCeiling:[35,25],
+    stretch:[35,25],
+
+    door:[300,120],
+    metalDoor:[700,150],
+
+    pvcWindow:[300,80],
+    aluminumWindow:[450,100],
+
+    electricity:[25,25],
+    plumbing:[70,75]
+},
+
+standard:{
+    laminate:[30,12],
+    parquet:[70,35],
+    tile:[25,35],
+    granite:[55,45],
+    vinyl:[35,25],
+
+    paint:[8,20],
+    wallpaper:[18,15],
+    plaster:[30,30],
+    walltile:[25,35],
+
+    ceilingPaint:[8,20],
+    drywall:[35,30],
+    decorativeCeiling:[45,30],
+    stretch:[45,30],
+
+    door:[500,150],
+    metalDoor:[1100,200],
+
+    pvcWindow:[450,100],
+    aluminumWindow:[650,130],
+
+    electricity:[35,35],
+    plumbing:[100,100]
+},
+
+premium:{
+    laminate:[50,18],
+    parquet:[120,50],
+    tile:[45,50],
+    granite:[90,60],
+    vinyl:[55,35],
+
+    paint:[12,25],
+    wallpaper:[30,20],
+    plaster:[50,40],
+    walltile:[45,50],
+
+    ceilingPaint:[12,25],
+    drywall:[50,40],
+    decorativeCeiling:[65,40],
+    stretch:[65,40],
+
+    door:[900,200],
+    metalDoor:[1800,300],
+
+    pvcWindow:[700,150],
+    aluminumWindow:[1000,180],
+
+    electricity:[45,45],
+    plumbing:[140,130]
+}
+
+};
+
+let prices = JSON.parse(localStorage.getItem("remontcalc_prices_v5"))
+    || JSON.parse(JSON.stringify(defaultPrices));
+
+let rooms = [];
+
+const labels = {
+    laminate:"ლამინატი",
+    parquet:"პარკეტი",
+    tile:"კერამიკული ფილა",
+    granite:"გრანიტი",
+    vinyl:"ვინილი",
+
+    paint:"კედლის შეღებვა",
+    wallpaper:"შპალერი",
+    plaster:"დეკორატიული ბათქაში",
+    walltile:"კედლის ფილა",
+
+    ceilingPaint:"ჭერის შეღებვა",
+    drywall:"თაბაშირ-მუყაოს ჭერი",
+    decorativeCeiling:"დეკორატიული ჭერი",
+    stretch:"გასაჭიმი ჭერი",
+
+    door:"შიდა კარი",
+    metalDoor:"ლითონის კარი",
+
+    pvcWindow:"PVC ფანჯარა",
+    aluminumWindow:"ალუმინის ფანჯარა",
+
+    electricity:"ელექტრო წერტილი",
+    plumbing:"სანტექნიკის წერტილი"
+};
+
+function money(n){
+    return Math.round(n).toLocaleString("ka-GE")+" ₾";
+}
+
+function uid(){
+    return Date.now()+"_"+Math.random().toString(36).substr(2,6);
+}
+
+function newRoom(){
+    return {
+        id:uid(),
+        name:"ოთახი "+(rooms.length+1),
+
+        floorArea:20,
+        wallArea:50,
+        ceilingArea:20,
+
+        floorType:"laminate",
+        wallType:"paint",
+        ceilingType:"ceilingPaint",
+
+        floorWaste:8,
+        wallWaste:5,
+        ceilingWaste:5,
+
+        doors:1,
+        doorType:"door",
+
+        windows:1,
+        windowType:"pvcWindow",
+
+        electricity:5,
+        plumbing:0,
+
+        extra:0,
+        note:""
+    };
+}
+
+function addRoom(){
+    rooms.push(newRoom());
+    renderRooms();
+    calculate();
+}
+
+function deleteRoom(id){
+    rooms=rooms.filter(r=>r.id!==id);
+
+    if(rooms.length===0) rooms.push(newRoom());
+
+    renderRooms();
+    calculate();
+}
+
+function setLevel(value){
+    document.getElementById("level").value=value;
+    renderPriceEditor();
+    calculate();
+}
+
+function renderRooms(){
+
+    const box=document.getElementById("rooms");
+    box.innerHTML="";
+
+    rooms.forEach((r,index)=>{
+
+        box.innerHTML+=`
+
+        <div class="card room">
+
+            <div class="room-title">
+                <input value="${escapeHtml(r.name)}"
+                    oninput="updateRoom('${r.id}','name',this.value)">
+                <button class="danger no-print"
+                    onclick="deleteRoom('${r.id}')">🗑️</button>
+            </div>
+
+            <div class="grid">
+
+                <div>
+                    <label>იატაკის ფართობი მ²</label>
+                    <input type="number" value="${r.floorArea}"
+                        oninput="updateRoom('${r.id}','floorArea',this.value)">
+                </div>
+
+                <div>
+                    <label>კედლების ფართობი მ²</label>
+                    <input type="number" value="${r.wallArea}"
+                        oninput="updateRoom('${r.id}','wallArea',this.value)">
+                </div>
+
+                <div>
+                    <label>ჭერის ფართობი მ²</label>
+                    <input type="number" value="${r.ceilingArea}"
+                        oninput="updateRoom('${r.id}','ceilingArea',this.value)">
+                </div>
+
+                <div>
+                    <label>იატაკის ტიპი</label>
+                    <select onchange="updateRoom('${r.id}','floorType',this.value)">
+                        ${option("laminate","ლამინატი",r.floorType)}
+                        ${option("parquet","პარკეტი",r.floorType)}
+                        ${option("tile","კერამიკული ფილა",r.floorType)}
+                        ${option("granite","გრანიტი",r.floorType)}
+                        ${option("vinyl","ვინილი",r.floorType)}
+                    </select>
+                </div>
+
+                <div>
+                    <label>კედლის ტიპი</label>
+                    <select onchange="updateRoom('${r.id}','wallType',this.value)">
+                        ${option("paint","შეღებვა",r.wallType)}
+                        ${option("wallpaper","შპალერი",r.wallType)}
+                        ${option("plaster","დეკორატიული ბათქაში",r.wallType)}
+                        ${option("walltile","კედლის ფილა",r.wallType)}
+                    </select>
+                </div>
+
+                <div>
+                    <label>ჭერის ტიპი</label>
+                    <select onchange="updateRoom('${r.id}','ceilingType',this.value)">
+                        ${option("ceilingPaint","შეღებვა",r.ceilingType)}
+                        ${option("drywall","თაბაშირ-მუყაო",r.ceilingType)}
+                        ${option("decorativeCeiling","დეკორატიული",r.ceilingType)}
+                        ${option("stretch","გასაჭიმი",r.ceilingType)}
+                    </select>
+                </div>
+
+                <div>
+                    <label>იატაკის ნარჩენი %</label>
+                    <input type="number" value="${r.floorWaste}"
+                        oninput="updateRoom('${r.id}','floorWaste',this.value)">
+                </div>
+
+                <div>
+                    <label>კედლის ნარჩენი %</label>
+                    <input type="number" value="${r.wallWaste}"
+                        oninput="updateRoom('${r.id}','wallWaste',this.value)">
+                </div>
+
+                <div>
+                    <label>ჭერის ნარჩენი %</label>
+                    <input type="number" value="${r.ceilingWaste}"
+                        oninput="updateRoom('${r.id}','ceilingWaste',this.value)">
+                </div>
+
+                <div>
+                    <label>კარები</label>
+                    <input type="number" value="${r.doors}"
+                        oninput="updateRoom('${r.id}','doors',this.value)">
+                </div>
+
+                <div>
+                    <label>კარის ტიპი</label>
+                    <select onchange="updateRoom('${r.id}','doorType',this.value)">
+                        ${option("door","შიდა კარი",r.doorType)}
+                        ${option("metalDoor","ლითონის კარი",r.doorType)}
+                    </select>
+                </div>
+
+                <div>
+                    <label>ფანჯრები</label>
+                    <input type="number" value="${r.windows}"
+                        oninput="updateRoom('${r.id}','windows',this.value)">
+                </div>
+
+                <div>
+                    <label>ფანჯრის ტიპი</label>
+                    <select onchange="updateRoom('${r.id}','windowType',this.value)">
+                        ${option("pvcWindow","PVC",r.windowType)}
+                        ${option("aluminumWindow","ალუმინი",r.windowType)}
+                    </select>
+                </div>
+
+                <div>
+                    <label>ელექტრო წერტილები</label>
+                    <input type="number" value="${r.electricity}"
+                        oninput="updateRoom('${r.id}','electricity',this.value)">
+                </div>
+
+                <div>
+                    <label>სანტექნიკის წერტილები</label>
+                    <input type="number" value="${r.plumbing}"
+                        oninput="updateRoom('${r.id}','plumbing',this.value)">
+                </div>
+
+                <div>
+                    <label>დამატებითი ხარჯი ₾</label>
+                    <input type="number" value="${r.extra}"
+                        oninput="updateRoom('${r.id}','extra',this.value)">
+                </div>
+
+                <div>
+                    <label>შენიშვნა</label>
+                    <textarea
+                        oninput="updateRoom('${r.id}','note',this.value)"
+                    >${escapeHtml(r.note)}</textarea>
+                </div>
+
+            </div>
+
+        </div>
+        `;
+    });
+}
+
+function option(value,text,current){
+    return `<option value="${value}" ${value===current?"selected":""}>${text}</option>`;
+}
+
+function updateRoom(id,key,value){
+
+    const r=rooms.find(x=>x.id===id);
+    if(!r)return;
+
+    if(["name","note","floorType","wallType","ceilingType","doorType","windowType"].includes(key)){
+        r[key]=value;
+    }else{
+        r[key]=parseFloat(value)||0;
+    }
+
+    calculate();
+}
+
+function calculate(){
+
+    const level=document.getElementById("level").value;
+    const p=prices[level];
+
+    let materialTotal=0;
+    let laborTotal=0;
+    let extraTotal=0;
+
+    let materialMap={};
+    let rows=[];
+
+    rooms.forEach(r=>{
+
+        const floorQty=r.floorArea*(1+r.floorWaste/100);
+        const wallQty=r.wallArea*(1+r.wallWaste/100);
+        const ceilingQty=r.ceilingArea*(1+r.ceilingWaste/100);
+
+        // იატაკი
+        addItem(
+            r,
+            r.floorType,
+            floorQty,
+            "მ²",
+            p[r.floorType][0],
+            p[r.floorType][1],
+            rows
+        );
+
+        // კედლები
+        addItem(
+            r,
+            r.wallType,
+            wallQty,
+            "მ²",
+            p[r.wallType][0],
+            p[r.wallType][1],
+            rows
+        );
+
+        // ჭერი
+        addItem(
+            r,
+            r.ceilingType,
+            ceilingQty,
+            "მ²",
+            p[r.ceilingType][0],
+            p[r.ceilingType][1],
+            rows
+        );
+
+        // კარი
+        if(r.doors>0){
+            addItem(
+                r,
+                r.doorType,
+                r.doors,
+                "ც",
+                p[r.doorType][0],
+                p[r.doorType][1],
+                rows
+            );
+        }
+
+        // ფანჯარა
+        if(r.windows>0){
+            addItem(
+                r,
+                r.windowType,
+                r.windows,
+                "ც",
+                p[r.windowType][0],
+                p[r.windowType][1],
+                rows
+            );
+        }
+
+        // ელექტრო
+        if(r.electricity>0){
+            addItem(
+                r,
+                "electricity",
+                r.electricity,
+                "ც",
+                p.electricity[0],
+                p.electricity[1],
+                rows
+            );
+        }
+
+        // სანტექნიკა
+        if(r.plumbing>0){
+            addItem(
+                r,
+                "plumbing",
+                r.plumbing,
+                "ც",
+                p.plumbing[0],
+                p.plumbing[1],
+                rows
+            );
+        }
+
+        extraTotal+=r.extra;
+
+        // დამხმარე მასალები
+        const helpers=calculateHelpers(r);
+
+        helpers.forEach(h=>{
+
+            if(!materialMap[h.name]){
+                materialMap[h.name]={
+                    qty:0,
+                    unit:h.unit,
+                    price:h.price
+                };
+            }
+
+            materialMap[h.name].qty+=h.qty;
+            materialMap[h.name].price=h.price;
+
+            materialTotal+=h.qty*h.price;
+        });
+
+    });
+
+    rows.forEach(x=>{
+        materialTotal+=x.material;
+        laborTotal+=x.labor;
+    });
+
+    const grand=materialTotal+laborTotal+extraTotal;
+
+    document.getElementById("materialTotal").textContent=money(materialTotal);
+    document.getElementById("laborTotal").textContent=money(laborTotal);
+    document.getElementById("extraTotal").textContent=money(extraTotal);
+    document.getElementById("grandTotal").textContent=money(grand);
+
+    renderMaterials(materialMap);
+    renderEstimate(rows);
+}
+
+function addItem(r,key,qty,unit,matPrice,laborPrice,rows){
+
+    const material=qty*matPrice;
+    const labor=qty*laborPrice;
+
+    rows.push({
+        room:r.name,
+        name:labels[key]||key,
+        qty:qty,
+        unit:unit,
+        material:material,
+        labor:labor
+    });
+}
+
+/*
+დამხმარე მასალების ნორმები.
+ეს არის სავარაუდო ნორმები და არა სამშენებლო სტანდარტის ოფიციალური
+რეგულაცია. მომავალში შეგვიძლია მომხმარებელს მათი შეცვლის უფლებაც მივცეთ.
+*/
+
+function calculateHelpers(r){
+
+    let list=[];
+
+    // იატაკის დამხმარე მასალა
+    if(["laminate","vinyl"].includes(r.floorType)){
+
+        const qty=r.floorArea*(1+r.floorWaste/100);
+
+        list.push({
+            name:"ქვეშაფენი",
+            qty:qty,
+            unit:"მ²",
+            price:4
+        });
+
+        list.push({
+            name:"პლინტუსი",
+            qty:Math.sqrt(r.floorArea)*4*1.05,
+            unit:"მ",
+            price:6
+        });
+    }
+
+    // ლამინატის/ვინილისთვის წებო და წვრილმანი
+    if(r.floorType==="vinyl"){
+
+        const qty=r.floorArea*(1+r.floorWaste/100);
+
+        list.push({
+            name:"ვინილის წებო",
+            qty:qty*0.25,
+            unit:"კგ",
+            price:8
+        });
+    }
+
+    // ფილა
+    if(["tile","granite"].includes(r.floorType)){
+
+        const qty=r.floorArea*(1+r.floorWaste/100);
+
+        list.push({
+            name:"ფილების წებო",
+            qty:qty*4,
+            unit:"კგ",
+            price:1.8
+        });
+
+        list.push({
+            name:"ფუგა",
+            qty:qty*0.35,
+            unit:"კგ",
+            price:6
+        });
+    }
+
+    // შეღებილი კედელი
+    if(r.wallType==="paint"){
+
+        list.push({
+            name:"გრუნტი",
+            qty:r.wallArea*0.15,
+            unit:"ლ",
+            price:4
+        });
+
+        list.push({
+            name:"შპაკლი",
+            qty:r.wallArea*1.2,
+            unit:"კგ",
+            price:1.8
+        });
+
+        list.push({
+            name:"კედლის საღებავი",
+            qty:r.wallArea*0.18,
+            unit:"ლ",
+            price:12
+        });
+    }
+
+    // შპალერი
+    if(r.wallType==="wallpaper"){
+
+        list.push({
+            name:"გრუნტი",
+            qty:r.wallArea*0.15,
+            unit:"ლ",
+            price:4
+        });
+
+        list.push({
+            name:"შპალერის წებო",
+            qty:r.wallArea*0.12,
+            unit:"კგ",
+            price:8
+        });
+    }
+
+    // დეკორატიული ბათქაში
+    if(r.wallType==="plaster"){
+
+        list.push({
+            name:"გრუნტი",
+            qty:r.wallArea*0.15,
+            unit:"ლ",
+            price:4
+        });
+
+        list.push({
+            name:"დეკორატიული ნარევი",
+            qty:r.wallArea*1.5,
+            unit:"კგ",
+            price:5
+        });
+    }
+
+    // კედლის ფილა
+    if(r.wallType==="walltile"){
+
+        list.push({
+            name:"ფილების წებო",
+            qty:r.wallArea*4,
+            unit:"კგ",
+            price:1.8
+        });
+
+        list.push({
+            name:"ფუგა",
+            qty:r.wallArea*0.35,
+            unit:"კგ",
+            price:6
+        });
+    }
+
+    // ჭერის შეღებვა
+    if(r.ceilingType==="ceilingPaint"){
+
+        list.push({
+            name:"ჭერის გრუნტი",
+            qty:r.ceilingArea*0.15,
+            unit:"ლ",
+            price:4
+        });
+
+        list.push({
+            name:"ჭერის შპაკლი",
+            qty:r.ceilingArea*1.0,
+            unit:"კგ",
+            price:1.8
+        });
+
+        list.push({
+            name:"ჭერის საღებავი",
+            qty:r.ceilingArea*0.18,
+            unit:"ლ",
+            price:12
+        });
+    }
+
+    // თაბაშირ-მუყაო
+    if(r.ceilingType==="drywall"){
+
+        list.push({
+            name:"თაბაშირ-მუყაო",
+            qty:r.ceilingArea*1.08,
+            unit:"მ²",
+            price:15
+        });
+
+        list.push({
+            name:"პროფილი და სამაგრები",
+            qty:r.ceilingArea,
+            unit:"მ²",
+            price:10
+        });
+
+        list.push({
+            name:"შპაკლი/ლენტი",
+            qty:r.ceilingArea*0.8,
+            unit:"კგ",
+            price:4
+        });
+
+        list.push({
+            name:"გრუნტი",
+            qty:r.ceilingArea*0.15,
+            unit:"ლ",
+            price:4
+        });
+
+        list.push({
+            name:"საღებავი",
+            qty:r.ceilingArea*0.18,
+            unit:"ლ",
+            price:12
+        });
+    }
+
+    // გასაჭიმი ჭერი
+    if(r.ceilingType==="stretch"){
+
+        list.push({
+            name:"გასაჭიმი ჭერის მასალა",
+            qty:r.ceilingArea*1.05,
+            unit:"მ²",
+            price:25
+        });
+    }
+
+    return list;
+}
+
+function renderMaterials(map){
+
+    const box=document.getElementById("materialsList");
+
+    const keys=Object.keys(map);
+
+    if(keys.length===0){
+        box.innerHTML="<div class='note'>მასალები ჯერ არ არის.</div>";
+        return;
+    }
+
+    let html=`
+    <div style="overflow-x:auto">
+    <table>
+        <thead>
+            <tr>
+                <th>მასალა</th>
+                <th>რაოდენობა</th>
+                <th>ერთეული</th>
+                <th>ერთეულის ფასი</th>
+                <th>ღირებულება</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    keys.forEach(k=>{
+
+        const x=map[k];
+
+        html+=`
+        <tr>
+            <td>${k}</td>
+            <td>${round(x.qty)}</td>
+            <td>${x.unit}</td>
+            <td>${money(x.price)}</td>
+            <td>${money(x.qty*x.price)}</td>
+        </tr>
+        `;
+    });
+
+    html+=`</tbody></table></div>`;
+
+    box.innerHTML=html;
+}
+
+function renderEstimate(rows){
+
+    const tbody=document.getElementById("estimateTable");
+
+    tbody.innerHTML=rows.map(x=>`
+
+        <tr>
+            <td>${x.room}</td>
+            <td>${x.name}</td>
+            <td>${round(x.qty)}</td>
+            <td>${x.unit}</td>
+            <td>${money(x.material)}</td>
+            <td>${money(x.labor)}</td>
+            <td>${money(x.material+x.labor)}</td>
+        </tr>
+
+    `).join("");
+}
+
+function renderPriceEditor(){
+
+    const level=document.getElementById("level").value;
+    const p=prices[level];
+
+    const box=document.getElementById("priceEditor");
+
+    let html="";
+
+    Object.keys(p).forEach(key=>{
+
+        html+=`
+        <div class="material-box">
+
+            <strong>${labels[key]||key}</strong>
+
+            <div class="grid" style="margin-top:8px">
+
+                <div>
+                    <label>მასალა ₾</label>
+                    <input type="number"
+                        value="${p[key][0]}"
+                        onchange="changePrice('${key}',0,this.value)">
+                </div>
+
+                <div>
+                    <label>ხელობა ₾</label>
+                    <input type="number"
+                        value="${p[key][1]}"
+                        onchange="changePrice('${key}',1,this.value)">
+                </div>
+
+            </div>
+
+        </div>
+        `;
+    });
+
+    box.innerHTML=html;
+}
+
+function changePrice(key,index,value){
+
+    const level=document.getElementById("level").value;
+
+    prices[level][key][index]=parseFloat(value)||0;
+
+    localStorage.setItem(
+        "remontcalc_prices_v5",
+        JSON.stringify(prices)
+    );
+
+    calculate();
+}
+
+function saveProject(){
+
+    const data={
+        version:"V5",
+        projectName:document.getElementById("projectName").value,
+        clientName:document.getElementById("clientName").value,
+        address:document.getElementById("address").value,
+        level:document.getElementById("level").value,
+        rooms:rooms
+    };
+
+    localStorage.setItem(
+        "remontcalc_saved_project",
+        JSON.stringify(data)
+    );
+
+    alert("პროექტი შენახულია ✅");
+}
+
+function loadProject(){
+
+    const raw=localStorage.getItem("remontcalc_saved_project");
+
+    if(!raw){
+        alert("შენახული პროექტი ვერ მოიძებნა.");
+        return;
+    }
+
+    const data=JSON.parse(raw);
+
+    document.getElementById("projectName").value=data.projectName||"";
+    document.getElementById("clientName").value=data.clientName||"";
+    document.getElementById("address").value=data.address||"";
+    document.getElementById("level").value=data.level||"standard";
+
+    rooms=data.rooms||[];
+
+    if(rooms.length===0) rooms.push(newRoom());
+
+    renderRooms();
+    renderPriceEditor();
+    calculate();
+
+    alert("პროექტი ჩაიტვირთა ✅");
+}
+
+function exportJSON(){
+
+    const data={
+        version:"V5",
+        projectName:document.getElementById("projectName").value,
+        clientName:document.getElementById("clientName").value,
+        address:document.getElementById("address").value,
+        level:document.getElementById("level").value,
+        rooms:rooms,
+        prices:prices
+    };
+
+    const blob=new Blob(
+        [JSON.stringify(data,null,2)],
+        {type:"application/json"}
+    );
+
+    const a=document.createElement("a");
+
+    a.href=URL.createObjectURL(blob);
+    a.download="remontcalc-project.json";
+    a.click();
+
+    URL.revokeObjectURL(a.href);
+}
+
+function importJSON(event){
+
+    const file=event.target.files[0];
+
+    if(!file)return;
+
+    const reader=new FileReader();
+
+    reader.onload=function(e){
+
+        try{
+
+            const data=JSON.parse(e.target.result);
+
+            document.getElementById("projectName").value=data.projectName||"";
+            document.getElementById("clientName").value=data.clientName||"";
+            document.getElementById("address").value=data.address||"";
+            document.getElementById("level").value=data.level||"standard";
+
+            rooms=data.rooms||[];
+
+            if(data.prices){
+                prices=data.prices;
+                localStorage.setItem(
+                    "remontcalc_prices_v5",
+                    JSON.stringify(prices)
+                );
+            }
+
+            if(rooms.length===0) rooms.push(newRoom());
+
+            renderRooms();
+            renderPriceEditor();
+            calculate();
+
+            alert("JSON პროექტი ჩაიტვირთა ✅");
+
+        }catch(err){
+
+            alert("JSON ფაილი არასწორია.");
+
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+function round(n){
+    return Math.round(n*100)/100;
+}
+
+function escapeHtml(str){
+
+    return String(str||"")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function init(){
+
+    rooms.push(newRoom());
+
+    renderRooms();
+    renderPriceEditor();
+    calculate();
+}
+
+init();
+
+</script>
+
+</body>
+</html>
+```
